@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  mosquitto:
+    build: .
+    container_name: mosquitto
+    command: /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf
+    networks:
+      - iot
+    restart: unless-stopped
+    volumes:
+      - mqtt_config:/mosquitto/config
+      - mqtt_data:/mosquitto/data
+      - mqtt_log:/mosquitto/log
+    ports:
+      - 1883:1883
+      - 9001:9001
+
+  influxdb:
+    image: influxdb:1.8
+    container_name: influxdb
+    restart: always
+    ports:
+      - "8086:8086"
+    networks:
+      - iot
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+
+  telegraf:
+    image: telegraf
+    container_name: telegraf
+    restart: always
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    depends_on:
+      - mosquitto
+      - influxdb
+    ports:
+      - 8125:8125
+    networks:
+      - iot
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    networks:
+      - iot
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana.ini:/etc/grafana/grafana.ini
+    depends_on:
+      - influxdb
+
+volumes:
+  mqtt_config:
+  mqtt_data:
+  mqtt_log:
+  influxdb-data:
+  grafana-data:
+
+networks:
+  iot:
+
